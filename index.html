@@ -260,28 +260,6 @@
             color: var(--primary-laser);
         }
 
-        .procedures-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 24px;
-        }
-
-        .procedure-chip {
-            padding: 8px 16px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 20px;
-            font-size: 0.85rem;
-            border: 1px solid transparent;
-            transition: all 0.2s;
-        }
-
-        .procedure-chip.active {
-            background: var(--text-main);
-            color: var(--bg-color);
-            font-weight: 600;
-        }
-
         /* --- Numpad --- */
         .numpad-display {
             font-family: 'Roboto Mono', monospace;
@@ -421,12 +399,7 @@
                 <button class="service-btn" id="btn-laser" onclick="App.selectService('laser')">ЛАЗЕР</button>
             </div>
 
-            <!-- Step 2: Procedure -->
-            <div id="procedures-container" class="procedures-list">
-                <!-- Chips injected by JS -->
-            </div>
-
-            <!-- Step 3: Phone (Last 4) -->
+            <!-- Step 2: Phone (Last 4) -->
             <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 5px;">ПОСЛЕДНИЕ 4 ЦИФРЫ</div>
             <div class="numpad-display" id="numpad-display"></div>
 
@@ -476,9 +449,9 @@
             </div>
 
             <h4 style="margin-bottom: 10px;">База клиентов</h4>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Формат:Телефон (новая строка)</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Введите номера телефонов через запятую или пробел</div>
             <div class="settings-area">
-                <textarea id="clients-input" placeholder="Иван 89001234567&#10;Мария 89009876543"></textarea>
+                <textarea id="clients-input" placeholder="89001234567, 89009876543, 89005556677"></textarea>
             </div>
             <button class="main-action-btn" onclick="App.saveSettings()">СОХРАНИТЬ</button>
         </div>
@@ -495,18 +468,6 @@
                 this.state = {
                     view: 'open', // 'open' or 'closed'
                     bookings: [],
-                    procedures: {
-                        massage: [
-                            {id: 'm1', name: 'Классика', duration: 60},
-                            {id: 'm2', name: 'Антицеллюлит', duration: 60},
-                            {id: 'm3', name: 'Вибро', duration: 30}
-                        ],
-                        laser: [
-                            {id: 'l1', name: 'Все тело', duration: 60},
-                            {id: 'l2', name: 'Подмышки', duration: 15},
-                            {id: 'l3', name: 'Бикини', duration: 30}
-                        ]
-                    },
                     clients: [], // {name, phone, rawString}
                     settings: { workStart: '10:00', workEnd: '22:00' },
                     renderedDateLimit: new Date(), // For infinite scroll
@@ -642,7 +603,16 @@
                 // Sort dates and render only those with slots
                 const sortedDates = Array.from(datesWithSlots).sort();
                 
-                sortedDates.forEach(dateKey => {
+                // Filter out past dates for 'open' view - start from today
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const todayKey = today.toISOString().split('T')[0];
+                
+                const filteredDates = this.state.view === 'open' 
+                    ? sortedDates.filter(dateKey => dateKey >= todayKey)
+                    : sortedDates;
+                
+                filteredDates.forEach(dateKey => {
                     const d = new Date(dateKey + 'T00:00:00');
                     const dayStr = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' });
                     const isToday = dateKey === new Date().toISOString().split('T')[0];
@@ -735,7 +705,6 @@
                                 <div style="font-weight:700; font-size: 1rem;">${time}</div>
                                 ${showClientName ? `<div class="client-info">${booking.clientName}</div>` : ''}
                                 <div class="client-info" style="font-family:monospace">..${booking.phone.slice(-4)}</div>
-                                <div class="client-info" style="font-size:0.6rem; margin-top:2px;">${booking.procedure}</div>
                             `;
                             slot.onclick = () => this.openViewModal(booking);
                         }
@@ -803,7 +772,7 @@
 
             // --- Booking Logic ---
             openBookingModal(date, time) {
-                this.state.currentBooking = { date, time, serviceType: null, procedure: null, phone: '' };
+                this.state.currentBooking = { date, time, serviceType: null, phone: '' };
                 document.getElementById('modal-date-title').innerText = `${date.split('-').reverse().join('.')} / ${time}`;
                 document.getElementById('booking-modal').classList.add('active');
                 this.resetModalUI();
@@ -811,7 +780,6 @@
 
             resetModalUI() {
                 document.querySelectorAll('.service-btn').forEach(b => b.classList.remove('selected-massage', 'selected-laser'));
-                document.getElementById('procedures-container').innerHTML = '';
                 document.getElementById('numpad-display').innerText = '';
                 this.updateConfirmBtn();
             }
@@ -821,26 +789,8 @@
                 // UI Toggle
                 document.getElementById('btn-massage').classList.toggle('selected-massage', type === 'massage');
                 document.getElementById('btn-laser').classList.toggle('selected-laser', type === 'laser');
-                document.getElementById('btn-massage').classList.toggle('selected-massage', type !== 'laser' && false); // clear other
                 if (type === 'massage') document.getElementById('btn-laser').classList.remove('selected-laser');
                 if (type === 'laser') document.getElementById('btn-massage').classList.remove('selected-massage');
-
-                // Render Procedures
-                const container = document.getElementById('procedures-container');
-                container.innerHTML = '';
-                const list = this.state.procedures[type];
-                list.forEach(proc => {
-                    const chip = document.createElement('div');
-                    chip.className = 'procedure-chip';
-                    chip.innerText = proc.name;
-                    chip.onclick = () => {
-                        this.state.currentBooking.procedure = proc.name;
-                        document.querySelectorAll('.procedure-chip').forEach(c => c.classList.remove('active'));
-                        chip.classList.add('active');
-                        this.updateConfirmBtn();
-                    };
-                    container.appendChild(chip);
-                });
                 this.updateConfirmBtn();
             }
 
@@ -866,13 +816,13 @@
 
             updateConfirmBtn() {
                 const b = this.state.currentBooking;
-                const isValid = b.serviceType && b.procedure && b.phone.length === 4;
+                const isValid = b.serviceType && b.phone.length === 4;
                 document.querySelector('.main-action-btn').disabled = !isValid;
             }
 
             confirmBooking() {
                 const b = this.state.currentBooking;
-                if (!b.serviceType || !b.procedure || b.phone.length !== 4) return;
+                if (!b.serviceType || b.phone.length !== 4) return;
 
                 // Find client name if possible
                 const client = this.state.clients.find(c => c.phone.endsWith(b.phone));
@@ -883,7 +833,7 @@
                     date: b.date,
                     time: b.time,
                     serviceType: b.serviceType,
-                    procedure: b.procedure,
+                    procedure: '', // Empty procedure
                     phone: b.phone,
                     clientName: clientName,
                     status: 'active',
@@ -930,7 +880,7 @@
                 }
                 
                 document.getElementById('view-client-phone').innerText = fullPhone;
-                document.getElementById('view-service-info').innerText = `${booking.serviceType === 'massage' ? 'Массаж' : 'Лазер'} - ${booking.procedure}`;
+                document.getElementById('view-service-info').innerText = booking.serviceType === 'massage' ? 'Массаж' : 'Лазер';
                 
                 document.getElementById('btn-call-client').onclick = () => {
                     if (fullPhone.length > 4 && !fullPhone.startsWith('...')) {
@@ -954,25 +904,28 @@
             // --- Settings Logic ---
             openSettings() {
                 document.getElementById('settings-modal').classList.add('active');
-                // Fill textarea
-                const text = this.state.clients.map(c => c.rawString || `${c.name} ${c.phone}`).join('\n');
-                document.getElementById('clients-input').value = text;
+                // Fill textarea with phone numbers separated by comma
+                const phones = this.state.clients.map(c => c.phone).filter(Boolean);
+                document.getElementById('clients-input').value = phones.join(', ');
             }
             
             saveSettings() {
                 const text = document.getElementById('clients-input').value;
-                const lines = text.split('\n');
                 const newClients = [];
                 
-                lines.forEach(line => {
-                    const clean = line.trim();
-                    if (!clean) return;
-                    // Extract phone (last consecutive digits)
-                    const match = clean.match(/(\d+)$/); // Simple extraction: assumes "Name Number" format
-                    if (match) {
-                        const phone = match[1];
-                        const name = clean.replace(phone, '').trim();
-                        newClients.push({ name, phone, rawString: clean });
+                // Split by comma or space, then extract phone numbers
+                const parts = text.split(/[,\s]+/).map(p => p.trim()).filter(Boolean);
+                
+                parts.forEach(part => {
+                    // Extract phone number (sequence of digits, at least 10 digits)
+                    const phoneMatch = part.match(/(\d{10,})/);
+                    if (phoneMatch) {
+                        const phone = phoneMatch[1];
+                        newClients.push({ 
+                            name: '', 
+                            phone: phone, 
+                            rawString: phone 
+                        });
                     }
                 });
                 
