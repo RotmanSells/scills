@@ -509,10 +509,12 @@
                 this.loadLocal();
                 this.render();
                 
-                // Set initial infinite scroll date to +7 days from now
-                const d = new Date();
-                d.setDate(d.getDate() + 14);
-                this.state.renderedDateLimit = d;
+                // Ensure renderedDateLimit is always a valid Date object
+                if (!this.state.renderedDateLimit || !(this.state.renderedDateLimit instanceof Date) || isNaN(this.state.renderedDateLimit.getTime())) {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 14);
+                    this.state.renderedDateLimit = d;
+                }
 
                 this.renderDays();
                 this.setupInfiniteScroll();
@@ -530,6 +532,17 @@
                 const s = localStorage.getItem('salon_state');
                 if (s) {
                     const parsed = JSON.parse(s);
+                    // Convert renderedDateLimit back to Date object if it exists
+                    if (parsed.renderedDateLimit) {
+                        const dateLimit = new Date(parsed.renderedDateLimit);
+                        // Check if date is valid
+                        if (isNaN(dateLimit.getTime())) {
+                            // Invalid date, use default
+                            parsed.renderedDateLimit = null;
+                        } else {
+                            parsed.renderedDateLimit = dateLimit;
+                        }
+                    }
                     // Merge strategies could be complex, for now simple overwrite but keep queue if any
                     this.state = { ...this.state, ...parsed };
                 }
@@ -606,7 +619,17 @@
                     // Check all dates from today to renderedDateLimit
                     const start = new Date();
                     start.setHours(0,0,0,0);
-                    const end = new Date(this.state.renderedDateLimit);
+                    
+                    // Ensure renderedDateLimit is valid
+                    let endDate = this.state.renderedDateLimit;
+                    if (!(endDate instanceof Date) || isNaN(endDate.getTime())) {
+                        // Fallback to 14 days from now
+                        endDate = new Date();
+                        endDate.setDate(endDate.getDate() + 14);
+                        this.state.renderedDateLimit = endDate;
+                    }
+                    const end = new Date(endDate);
+                    end.setHours(23,59,59,999); // End of day
                     
                     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                         const dateKey = d.toISOString().split('T')[0];
@@ -670,7 +693,12 @@
                 // For 'open' view, check if we've reached the end
                 const startH = parseInt(this.state.settings.workStart.split(':')[0]);
                 const endH = parseInt(this.state.settings.workEnd.split(':')[0]);
-                const currentLimit = new Date(this.state.renderedDateLimit);
+                let currentLimit = this.state.renderedDateLimit;
+                if (!(currentLimit instanceof Date) || isNaN(currentLimit.getTime())) {
+                    currentLimit = new Date();
+                    currentLimit.setDate(currentLimit.getDate() + 14);
+                    this.state.renderedDateLimit = currentLimit;
+                }
                 const checkLimit = new Date(currentLimit);
                 checkLimit.setDate(checkLimit.getDate() + 7); // Check next week
                 
@@ -758,7 +786,12 @@
                 this.scrollObserver = new IntersectionObserver((entries) => {
                     if (entries[0].isIntersecting && this.state.view === 'open') {
                         // Check if there are free slots in the next period before extending
-                        const currentLimit = new Date(this.state.renderedDateLimit);
+                        let currentLimit = this.state.renderedDateLimit;
+                        if (!(currentLimit instanceof Date) || isNaN(currentLimit.getTime())) {
+                            currentLimit = new Date();
+                            currentLimit.setDate(currentLimit.getDate() + 14);
+                            this.state.renderedDateLimit = currentLimit;
+                        }
                         const newLimit = new Date(currentLimit);
                         newLimit.setDate(newLimit.getDate() + 14);
                         
