@@ -644,9 +644,10 @@
                     });
                 } else {
                     // For 'open' view: collect dates that have free slots
-                    // Check all dates from today to renderedDateLimit
-                    const start = new Date();
-                    start.setHours(0,0,0,0);
+                    // Check all dates from TODAY (not yesterday) to renderedDateLimit
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    const todayKey = today.toISOString().split('T')[0];
                     
                     // Ensure renderedDateLimit is valid
                     let endDate = this.state.renderedDateLimit;
@@ -659,10 +660,22 @@
                     const end = new Date(endDate);
                     end.setHours(23,59,59,999); // End of day
                     
-                    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                    // Start from today, not yesterday
+                    for (let d = new Date(today); d <= end; d.setDate(d.getDate() + 1)) {
                         const dateKey = d.toISOString().split('T')[0];
+                        // Only check dates from today onwards
+                        if (dateKey < todayKey) continue;
+                        
                         // Check if there are any free slots on this day
+                        // For today, only check future times
+                        const isToday = dateKey === todayKey;
+                        const now = new Date();
+                        const currentHour = now.getHours();
+                        
                         for (let h = startH; h < endH; h++) {
+                            // Skip past times for today
+                            if (isToday && h <= currentHour) continue;
+                            
                             const time = `${h}:00`;
                             const booking = this.state.bookings.find(b => 
                                 b.date === dateKey && b.time === time && b.status === 'active'
@@ -776,7 +789,23 @@
                 const startH = parseInt(this.state.settings.workStart.split(':')[0]);
                 const endH = parseInt(this.state.settings.workEnd.split(':')[0]);
                 
+                // Check if this is today
+                const now = new Date();
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const todayKey = today.toISOString().split('T')[0];
+                const isToday = dateKey === todayKey;
+                const currentHour = now.getHours();
+                const currentMinute = now.getMinutes();
+                
                 for (let h = startH; h < endH; h++) {
+                    // For 'open' view on today, skip past times
+                    if (this.state.view === 'open' && isToday) {
+                        // Skip if hour has passed, or if it's current hour and minutes > 0
+                        if (h < currentHour || (h === currentHour && currentMinute > 0)) {
+                            continue;
+                        }
+                    }
                     hours.push(`${h}:00`);
                 }
 
