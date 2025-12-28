@@ -526,10 +526,11 @@
                     this.state.bookings = [];
                 }
 
+                // Initial render with local data
                 this.renderDays();
                 this.setupInfiniteScroll();
 
-                // Background Sync
+                // Background Sync - this will re-render after data loads
                 if (API_URL !== 'YOUR_GOOGLE_SCRIPT_WEB_APP_URL_HERE') {
                     await this.fetchData();
                 } else {
@@ -592,12 +593,32 @@
                 // For a "perfect" sync, we'd implementing a robust queue processor.
                 if (API_URL === 'YOUR_GOOGLE_SCRIPT_WEB_APP_URL_HERE') return;
 
+                const payload = { action, ...data };
+                
                 fetch(API_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' }, // Avoids CORS preflight (OPTIONS)
-                    body: JSON.stringify({ action, ...data })
-                }).then(() => console.log('Synced', action))
-                  .catch(err => console.error('Sync error', err));
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP error! status: ${res.status}`);
+                    }
+                    return res.text();
+                })
+                .then(text => {
+                    try {
+                        const json = JSON.parse(text);
+                        console.log('Synced', action, json);
+                    } catch (e) {
+                        console.log('Synced', action, text);
+                    }
+                })
+                .catch(err => {
+                    console.error('Sync error', err, 'Action:', action, 'Data:', data);
+                });
             }
 
             // --- UI Rendering ---
@@ -696,9 +717,17 @@
                 today.setHours(0,0,0,0);
                 const todayKey = today.toISOString().split('T')[0];
                 
-                const filteredDates = this.state.view === 'open' 
+                let filteredDates = this.state.view === 'open' 
                     ? sortedDates.filter(dateKey => dateKey >= todayKey)
                     : sortedDates;
+                
+                // For 'open' view, if no dates found, ensure at least tomorrow is shown
+                if (this.state.view === 'open' && filteredDates.length === 0) {
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    const tomorrowKey = tomorrow.toISOString().split('T')[0];
+                    filteredDates = [tomorrowKey];
+                }
                 
                 // Show empty message for 'closed' view if no bookings
                 if (this.state.view === 'closed' && filteredDates.length === 0) {
