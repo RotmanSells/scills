@@ -200,6 +200,7 @@
             display: none;
             justify-content: center;
             align-items: flex-end; /* Mobile style sheet */
+            overflow: hidden;
         }
         
         .modal-overlay.active {
@@ -214,8 +215,17 @@
             border-radius: 24px 24px 0 0;
             padding: 24px;
             box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
-            max-height: 90vh;
+            max-height: calc(100vh - 20px);
             overflow-y: auto;
+            overflow-x: hidden;
+            box-sizing: border-box;
+            margin-bottom: 0;
+        }
+        
+        body.modal-open {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
         }
 
         .modal-header {
@@ -418,7 +428,7 @@
                 <button class="num-btn action" onclick="App.numpadBack()">⌫</button>
             </div>
 
-            <button class="main-action-btn" onclick="App.confirmBooking()">ЗАПИСАТЬ</button>
+            <button class="main-action-btn" onclick="App.confirmBooking(); return false;" type="button">ЗАПИСАТЬ</button>
         </div>
     </div>
 
@@ -449,7 +459,10 @@
             </div>
 
             <h4 style="margin-bottom: 10px;">База клиентов</h4>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Введите номера телефонов через запятую или пробел</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+                <strong style="color: var(--accent-green);">📞 Важно:</strong> Добавьте номера телефонов клиентов, чтобы можно было звонить одной кнопкой из записи.<br>
+                Введите номера через запятую или пробел (можно в одну строку):
+            </div>
             <div class="settings-area">
                 <textarea id="clients-input" placeholder="89001234567, 89009876543, 89005556677"></textarea>
             </div>
@@ -775,6 +788,7 @@
                 this.state.currentBooking = { date, time, serviceType: null, phone: '' };
                 document.getElementById('modal-date-title').innerText = `${date.split('-').reverse().join('.')} / ${time}`;
                 document.getElementById('booking-modal').classList.add('active');
+                document.body.classList.add('modal-open');
                 this.resetModalUI();
             }
 
@@ -816,13 +830,19 @@
 
             updateConfirmBtn() {
                 const b = this.state.currentBooking;
-                const isValid = b.serviceType && b.phone.length === 4;
-                document.querySelector('.main-action-btn').disabled = !isValid;
+                const isValid = b && b.serviceType && b.phone && b.phone.length === 4;
+                const btn = document.querySelector('#booking-modal .main-action-btn');
+                if (btn) {
+                    btn.disabled = !isValid;
+                }
             }
 
             confirmBooking() {
                 const b = this.state.currentBooking;
-                if (!b.serviceType || b.phone.length !== 4) return;
+                if (!b || !b.serviceType || !b.phone || b.phone.length !== 4) {
+                    console.log('Validation failed:', b);
+                    return;
+                }
 
                 // Find client name if possible
                 const client = this.state.clients.find(c => c.phone.endsWith(b.phone));
@@ -889,6 +909,7 @@
                 };
                 
                 modal.classList.add('active');
+                document.body.classList.add('modal-open');
             }
             
             deleteBooking() {
@@ -904,6 +925,7 @@
             // --- Settings Logic ---
             openSettings() {
                 document.getElementById('settings-modal').classList.add('active');
+                document.body.classList.add('modal-open');
                 // Fill textarea with phone numbers separated by comma
                 const phones = this.state.clients.map(c => c.phone).filter(Boolean);
                 document.getElementById('clients-input').value = phones.join(', ');
@@ -939,6 +961,7 @@
             // --- Common ---
             closeModal(id = 'booking-modal') {
                 document.getElementById(id).classList.remove('active');
+                document.body.classList.remove('modal-open');
             }
             
             render() { /* placeholder */ }
