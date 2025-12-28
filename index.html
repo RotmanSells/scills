@@ -1,1143 +1,982 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-    <title>Ideal Body Admin</title>
-    <!-- W3.CSS 5.01 (CDN link as per rules, using a reliable w3.css mirror or standard link) -->
-    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
-    
-    <style>
-        :root {
-            --bg-color: #0f172a; /* Deep dark blue/slate */
-            --surface-color: #1e293b;
-            --primary-massage: #8b5cf6; /* Violet */
-            --primary-laser: #ec4899; /* Pink */
-            --accent-green: #10b981; /* Emerald */
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --glass: rgba(30, 41, 59, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.1);
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: 'Montserrat', sans-serif;
-            margin: 0;
-            padding-bottom: 80px; /* Space for infinite scroll trigger */
-            overflow-x: hidden;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        /* --- Header & Navigation --- */
-        .app-header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--glass-border);
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .brand-title {
-            font-weight: 800;
-            font-size: 1.2rem;
-            background: linear-gradient(45deg, var(--primary-massage), var(--primary-laser));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -0.5px;
-        }
-
-        .view-toggle {
-            background: var(--surface-color);
-            border-radius: 24px;
-            padding: 8px;
-            display: flex;
-            align-items: center;
-            gap: 0;
-            border: 1px solid var(--glass-border);
-            width: calc(100% - 20px);
-            margin: 10px auto;
-            box-sizing: border-box;
-            position: sticky;
-            top: 60px;
-            z-index: 99;
-        }
-
-        .toggle-btn {
-            padding: 16px 32px;
-            border-radius: 20px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            color: var(--text-muted);
-            text-align: center;
-            cursor: pointer;
-            border: 2px solid var(--glass-border);
-            background: transparent;
-            flex: 1;
-        }
-        
-        .toggle-btn.active {
-            background: var(--accent-green);
-            color: #000;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-            border-color: var(--accent-green);
-        }
-        
-        .toggle-btn.active-closed {
-            background: var(--primary-laser);
-            color: #fff;
-            box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
-            border-color: var(--primary-laser);
-        }
-
-        /* --- Grid Layout --- */
-        .days-container {
-            padding: 10px;
-        }
-
-        .day-block {
-            margin-bottom: 24px;
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        .day-header {
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .day-header .today-badge {
-            background: var(--accent-green);
-            color: #000;
-            font-size: 0.7rem;
-            padding: 2px 8px;
-            border-radius: 4px;
-            text-transform: uppercase;
-        }
-
-        .slots-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-            gap: 10px;
-        }
-
-        .time-slot {
-            background: var(--surface-color);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            aspect-ratio: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .time-slot:active {
-            transform: scale(0.95);
-        }
-
-        .time-slot.free {
-            border-color: rgba(16, 185, 129, 0.3);
-        }
-        
-        .time-slot.free .time-text {
-            color: var(--accent-green);
-            font-weight: 700;
-            font-size: 1.1rem;
-        }
-
-        .time-slot.booked {
-            background: #2d3748;
-            border-color: transparent;
-        }
-
-        .time-slot.booked.massage { border-left: 3px solid var(--primary-massage); }
-        .time-slot.booked.laser { border-left: 3px solid var(--primary-laser); }
-
-        .time-slot .client-info {
-            font-size: 0.7rem;
-            text-align: center;
-            margin-top: 4px;
-            color: var(--text-muted);
-            line-height: 1.2;
-        }
-        
-        .time-slot .service-icon {
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            font-size: 0.6rem;
-            opacity: 0.7;
-        }
-
-        /* --- Modals --- */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(5px);
-            z-index: 1000;
-            display: none;
-            justify-content: center;
-            align-items: flex-end; /* Mobile style sheet */
-            overflow: hidden;
-        }
-        
-        .modal-overlay.active {
-            display: flex;
-            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .modal-content {
-            background: var(--surface-color);
-            width: 100%;
-            max-width: 600px; /* Tablet limit */
-            border-radius: 24px 24px 0 0;
-            padding: 20px;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
-            max-height: 100vh;
-            overflow-y: auto;
-            overflow-x: hidden;
-            box-sizing: border-box;
-            margin-bottom: 0;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .modal-content > * {
-            flex-shrink: 0;
-        }
-        
-        .modal-content .numpad-grid {
-            flex-shrink: 0;
-        }
-        
-        body.modal-open {
-            overflow: hidden;
-            position: fixed;
-            width: 100%;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 800;
-        }
-
-        /* --- Form Elements --- */
-        .service-toggle {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .service-btn {
-            padding: 16px;
-            border-radius: 16px;
-            border: 2px solid var(--glass-border);
-            background: transparent;
-            color: var(--text-muted);
-            font-weight: 700;
-            transition: all 0.2s;
-        }
-
-        .service-btn.selected-massage {
-            background: rgba(139, 92, 246, 0.2);
-            border-color: var(--primary-massage);
-            color: var(--primary-massage);
-        }
-
-        .service-btn.selected-laser {
-            background: rgba(236, 72, 153, 0.2);
-            border-color: var(--primary-laser);
-            color: var(--primary-laser);
-        }
-
-        /* --- Numpad --- */
-        .numpad-display {
-            font-family: 'Roboto Mono', monospace;
-            font-size: 2rem;
-            text-align: center;
-            margin-bottom: 16px;
-            letter-spacing: 4px;
-            min-height: 45px;
-            color: var(--text-main);
-            border-bottom: 2px solid var(--glass-border);
-        }
-
-        .numpad-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-
-        .num-btn {
-            aspect-ratio: 1.4;
-            border-radius: 12px;
-            background: rgba(255,255,255,0.05);
-            border: none;
-            font-size: 1.4rem;
-            color: var(--text-main);
-            font-weight: 500;
-            transition: background 0.1s;
-        }
-
-        .num-btn:active { background: rgba(255,255,255,0.15); }
-        .num-btn.action { font-size: 1rem; color: var(--primary-laser); }
-
-        .main-action-btn {
-            width: 100%;
-            padding: 16px;
-            background: var(--text-main);
-            color: var(--bg-color);
-            border: none;
-            border-radius: 16px;
-            font-size: 1.1rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            box-shadow: 0 4px 20px rgba(255,255,255,0.15);
-            margin-top: auto;
-        }
-        
-        .main-action-btn.call-btn {
-            background: var(--accent-green);
-            color: #000;
-            margin-bottom: 12px;
-        }
-
-        .main-action-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        /* --- Settings --- */
-        .settings-area textarea {
-            width: 100%;
-            height: 150px;
-            background: rgba(0,0,0,0.2);
-            border: 1px solid var(--glass-border);
-            color: var(--text-main);
-            border-radius: 12px;
-            padding: 12px;
-            font-family: monospace;
-            margin-bottom: 15px;
-        }
-
-        /* Animations */
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        
-        /* Load More Trigger */
-        #infinite-trigger {
-            height: 60px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: var(--text-muted);
-        }
-        
-        .loading-spinner {
-            width: 24px;
-            height: 24px;
-            border: 3px solid rgba(255,255,255,0.1);
-            border-top-color: var(--accent-green);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<title>Ideal Body Admin</title>
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root {
+--bg-color: #0f172a;
+--surface-color: #1e293b;
+--primary-massage: #8b5cf6;
+--primary-laser: #ec4899;
+--accent-green: #10b981;
+--text-main: #f8fafc;
+--text-muted: #94a3b8;
+--glass: rgba(30, 41, 59, 0.7);
+--glass-border: rgba(255, 255, 255, 0.1);
+}
+body {
+background-color: var(--bg-color);
+color: var(--text-main);
+font-family: 'Montserrat', sans-serif;
+margin: 0;
+padding-bottom: 80px;
+overflow-x: hidden;
+-webkit-tap-highlight-color: transparent;
+}
+.app-header {
+position: sticky;
+top: 0;
+z-index: 100;
+background: rgba(15, 23, 42, 0.9);
+backdrop-filter: blur(12px);
+border-bottom: 1px solid var(--glass-border);
+padding: 15px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+}
+.brand-title {
+font-weight: 800;
+font-size: 1.2rem;
+background: linear-gradient(45deg, var(--primary-massage), var(--primary-laser));
+-webkit-background-clip: text;
+background-clip: text;
+-webkit-text-fill-color: transparent;
+letter-spacing: -0.5px;
+}
+.view-toggle {
+background: var(--surface-color);
+border-radius: 24px;
+padding: 8px;
+display: flex;
+align-items: center;
+gap: 0;
+border: 1px solid var(--glass-border);
+width: calc(100% - 20px);
+margin: 10px auto;
+box-sizing: border-box;
+position: sticky;
+top: 60px;
+z-index: 99;
+}
+.toggle-btn {
+padding: 16px 32px;
+border-radius: 20px;
+font-size: 1.1rem;
+font-weight: 600;
+transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+color: var(--text-muted);
+text-align: center;
+cursor: pointer;
+border: 2px solid var(--glass-border);
+background: transparent;
+flex: 1;
+}
+.toggle-btn.active {
+background: var(--accent-green);
+color: #000;
+box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+border-color: var(--accent-green);
+}
+.toggle-btn.active-closed {
+background: var(--primary-laser);
+color: #fff;
+box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+border-color: var(--primary-laser);
+}
+.days-container {
+padding: 10px;
+}
+.day-block {
+margin-bottom: 24px;
+animation: fadeIn 0.5s ease-out;
+}
+.day-header {
+font-size: 1.1rem;
+font-weight: 700;
+margin-bottom: 12px;
+color: var(--text-muted);
+display: flex;
+align-items: center;
+gap: 10px;
+}
+.day-header .today-badge {
+background: var(--accent-green);
+color: #000;
+font-size: 0.7rem;
+padding: 2px 8px;
+border-radius: 4px;
+text-transform: uppercase;
+}
+.slots-grid {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+gap: 10px;
+}
+.time-slot {
+background: var(--surface-color);
+border: 1px solid var(--glass-border);
+border-radius: 12px;
+aspect-ratio: 1;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+cursor: pointer;
+transition: transform 0.2s, box-shadow 0.2s;
+position: relative;
+overflow: hidden;
+}
+.time-slot:active {
+transform: scale(0.95);
+}
+.time-slot.free {
+border-color: rgba(16, 185, 129, 0.3);
+}
+.time-slot.free .time-text {
+color: var(--accent-green);
+font-weight: 700;
+font-size: 1.1rem;
+}
+.time-slot.booked {
+background: #2d3748;
+border-color: transparent;
+}
+.time-slot.booked.massage { border-left: 3px solid var(--primary-massage); }
+.time-slot.booked.laser { border-left: 3px solid var(--primary-laser); }
+.time-slot .client-info {
+font-size: 0.7rem;
+text-align: center;
+margin-top: 4px;
+color: var(--text-muted);
+line-height: 1.2;
+}
+.time-slot .service-icon {
+position: absolute;
+top: 4px;
+right: 4px;
+font-size: 0.6rem;
+opacity: 0.7;
+}
+.modal-overlay {
+position: fixed;
+top: 0;
+left: 0;
+right: 0;
+bottom: 0;
+background: rgba(0,0,0,0.8);
+backdrop-filter: blur(5px);
+z-index: 1000;
+display: none;
+justify-content: center;
+align-items: flex-end;
+overflow: hidden;
+}
+.modal-overlay.active {
+display: flex;
+animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-content {
+background: var(--surface-color);
+width: 100%;
+max-width: 600px;
+border-radius: 24px 24px 0 0;
+padding: 20px;
+box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+max-height: 90vh;
+overflow-y: auto;
+overflow-x: hidden;
+box-sizing: border-box;
+margin-bottom: 0;
+display: flex;
+flex-direction: column;
+}
+.modal-content > * {
+flex-shrink: 0;
+}
+body.modal-open {
+overflow: hidden;
+position: fixed;
+width: 100%;
+}
+.modal-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 16px;
+}
+.modal-title {
+font-size: 1.25rem;
+font-weight: 800;
+}
+.service-toggle {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 12px;
+margin-bottom: 16px;
+}
+.service-btn {
+padding: 16px;
+border-radius: 16px;
+border: 2px solid var(--glass-border);
+background: transparent;
+color: var(--text-muted);
+font-weight: 700;
+transition: all 0.2s;
+cursor: pointer;
+}
+.service-btn.selected-massage {
+background: rgba(139, 92, 246, 0.2);
+border-color: var(--primary-massage);
+color: var(--primary-massage);
+}
+.service-btn.selected-laser {
+background: rgba(236, 72, 153, 0.2);
+border-color: var(--primary-laser);
+color: var(--primary-laser);
+}
+.numpad-display {
+font-family: 'Roboto Mono', monospace;
+font-size: 2rem;
+text-align: center;
+margin-bottom: 16px;
+letter-spacing: 4px;
+min-height: 45px;
+color: var(--text-main);
+border-bottom: 2px solid var(--glass-border);
+}
+.numpad-grid {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 10px;
+margin-bottom: 16px;
+}
+.num-btn {
+aspect-ratio: 1.4;
+border-radius: 12px;
+background: rgba(255,255,255,0.05);
+border: none;
+font-size: 1.4rem;
+color: var(--text-main);
+font-weight: 500;
+transition: background 0.1s;
+cursor: pointer;
+}
+.num-btn:active { background: rgba(255,255,255,0.15); }
+.num-btn.action { font-size: 1rem; color: var(--primary-laser); }
+.main-action-btn {
+width: 100%;
+padding: 16px;
+background: var(--text-main);
+color: var(--bg-color);
+border: none;
+border-radius: 16px;
+font-size: 1.1rem;
+font-weight: 800;
+text-transform: uppercase;
+box-shadow: 0 4px 20px rgba(255,255,255,0.15);
+margin-top: auto;
+cursor: pointer;
+}
+.main-action-btn.call-btn {
+background: var(--accent-green);
+color: #000;
+margin-bottom: 12px;
+}
+.main-action-btn:disabled {
+opacity: 0.5;
+cursor: not-allowed;
+}
+.settings-area textarea {
+width: 100%;
+height: 150px;
+background: rgba(0,0,0,0.2);
+border: 1px solid var(--glass-border);
+color: var(--text-main);
+border-radius: 12px;
+padding: 12px;
+font-family: monospace;
+margin-bottom: 15px;
+box-sizing: border-box;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+#infinite-trigger {
+height: 60px;
+display: flex;
+justify-content: center;
+align-items: center;
+color: var(--text-muted);
+}
+.loading-spinner {
+width: 24px;
+height: 24px;
+border: 3px solid rgba(255,255,255,0.1);
+border-top-color: var(--accent-green);
+border-radius: 50%;
+animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
 </head>
 <body>
+<header class="app-header">
+<div class="brand-title">ИДЕАЛЬНОЕ ТЕЛО</div>
+<div onclick="App.openSettings()" style="cursor: pointer; padding: 5px;">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+<circle cx="12" cy="12" r="3"></circle>
+<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+</svg>
+</div>
+</header>
+<div class="view-toggle">
+<div class="toggle-btn active" onclick="App.toggleView('open')">Открытые</div>
+<div class="toggle-btn" onclick="App.toggleView('closed')">Закрытые</div>
+</div>
+<main id="main-container" class="days-container">
+<!-- Content injected by JS -->
+</main>
+<div id="infinite-trigger">
+<div class="loading-spinner"></div>
+</div>
+<div id="booking-modal" class="modal-overlay">
+<div class="modal-content">
+<div class="modal-header">
+<div class="modal-title" id="modal-date-title">Запись</div>
+<div onclick="App.closeModal()" style="padding: 10px; cursor: pointer;">✕</div>
+</div>
+<div class="service-toggle">
+<button class="service-btn" id="btn-massage" onclick="App.selectService('massage')">МАССАЖ</button>
+<button class="service-btn" id="btn-laser" onclick="App.selectService('laser')">ЛАЗЕР</button>
+</div>
+<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 5px;">ПОСЛЕДНИЕ 4 ЦИФРЫ</div>
+<div class="numpad-display" id="numpad-display"></div>
+<div class="numpad-grid">
+<button class="num-btn" onclick="App.numpadPress('1')">1</button>
+<button class="num-btn" onclick="App.numpadPress('2')">2</button>
+<button class="num-btn" onclick="App.numpadPress('3')">3</button>
+<button class="num-btn" onclick="App.numpadPress('4')">4</button>
+<button class="num-btn" onclick="App.numpadPress('5')">5</button>
+<button class="num-btn" onclick="App.numpadPress('6')">6</button>
+<button class="num-btn" onclick="App.numpadPress('7')">7</button>
+<button class="num-btn" onclick="App.numpadPress('8')">8</button>
+<button class="num-btn" onclick="App.numpadPress('9')">9</button>
+<button class="num-btn action" onclick="App.numpadClear()">C</button>
+<button class="num-btn" onclick="App.numpadPress('0')">0</button>
+<button class="num-btn action" onclick="App.numpadBack()">⌫</button>
+</div>
+<button class="main-action-btn" onclick="App.confirmBooking(); return false;" type="button">ЗАПИСАТЬ</button>
+</div>
+</div>
+<div id="view-modal" class="modal-overlay">
+<div class="modal-content">
+<div class="modal-header">
+<div class="modal-title">Детали записи</div>
+<div onclick="App.closeModal('view-modal')" style="padding: 10px; cursor: pointer;">✕</div>
+</div>
+<div style="margin-bottom: 20px;">
+<p id="view-client-phone" style="margin: 15px 0; color: var(--text-main); font-size: 1.5rem; font-weight: 600; text-align: center; font-family: 'Roboto Mono', monospace; letter-spacing: 2px; width: 100%;"></p>
+<p id="view-service-info" style="margin: 15px 0; font-size: 1.1rem; font-weight: 600;"></p>
+</div>
+<button class="main-action-btn call-btn" id="btn-call-client" onclick="App.callClient()">ПОЗВОНИТЬ</button>
+<button class="main-action-btn" style="background: #ef4444; margin-top: 10px;" onclick="App.deleteBooking()">УДАЛИТЬ ЗАПИСЬ</button>
+</div>
+</div>
+<div id="settings-modal" class="modal-overlay">
+<div class="modal-content">
+<div class="modal-header">
+<div class="modal-title">Настройки</div>
+<div onclick="App.closeModal('settings-modal')" style="padding: 10px; cursor: pointer;">✕</div>
+</div>
+<h4 style="margin-bottom: 10px;">База клиентов</h4>
+<div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
+<strong style="color: var(--accent-green);">📞 Важно:</strong> Добавьте номера телефонов клиентов, чтобы можно было звонить одной кнопкой из записи.<br>
+Введите номера через запятую или пробел (можно в одну строку):
+</div>
+<div class="settings-area">
+<textarea id="clients-input" placeholder="89001234567, 89009876543, 89005556677"></textarea>
+</div>
+<button class="main-action-btn" onclick="App.saveSettings()">СОХРАНИТЬ</button>
+</div>
+</div>
+<script type="module">
+/**
+ * Configuration: REPLACE WITH YOUR GOOGLE SCRIPT WEB APP URL
+ */
+const API_URL = 'https://script.google.com/macros/s/AKfycbzLjhlGThXTM6ckk6mjgbNXVOVTDwturDVTEDnpppmDULdlvdbcpYaoL6KpLiY5GlLU/exec';
 
-    <!-- Header -->
-    <header class="app-header">
-        <div class="brand-title">ИДЕАЛЬНОЕ ТЕЛО</div>
-        <div onclick="App.openSettings()" style="cursor: pointer; padding: 5px;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-        </div>
-    </header>
+class SalonApp {
+  constructor() {
+    this.state = {
+      view: 'open',
+      bookings: [],
+      clients: [],
+      settings: { workStart: '10:00', workEnd: '22:00' },
+      renderedDateLimit: null,
+      currentBooking: null,
+      viewingBooking: null,
+    };
+    this.isFirstRender = true;
+    this.scrollObserver = null;
+  }
 
-    <!-- View Toggle -->
-    <div class="view-toggle">
-        <div class="toggle-btn active" onclick="App.toggleView('open')">Открытые</div>
-        <div class="toggle-btn" onclick="App.toggleView('closed')">Закрытые</div>
-    </div>
+  async init() {
+    await this.loadAndPrepareData();
+    this.renderUI();
+    this.setupInfiniteScroll();
+    this.updateToggleButtons();
+  }
 
-    <!-- Main Content -->
-    <main id="main-container" class="days-container">
-        <!-- Content injected by JS -->
-    </main>
+  // Загрузка данных: сначала localStorage, потом сеть
+  async loadAndPrepareData() {
+    this.loadLocal();
+    this.ensureDefaults();
 
-    <!-- Infinite Scroll Trigger -->
-    <div id="infinite-trigger">
-        <div class="loading-spinner"></div>
-    </div>
+    // Попытка загрузить данные с сервера (если API_URL задан)
+    if (API_URL && !API_URL.includes('YOUR_GOOGLE_SCRIPT')) {
+      try {
+        await this.fetchData();
+      } catch (e) {
+        console.warn('Failed to fetch data from server, using local state.', e);
+        // Данные из localStorage уже загружены — продолжаем
+      }
+    } else {
+      console.warn('API_URL not configured — local mode only.');
+    }
+  }
 
-    <!-- Booking Modal -->
-    <div id="booking-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title" id="modal-date-title">Запись</div>
-                <div onclick="App.closeModal()" style="padding: 10px; cursor: pointer;">✕</div>
-            </div>
+  ensureDefaults() {
+    if (!this.state.settings.workStart || !this.state.settings.workEnd) {
+      this.state.settings = { workStart: '10:00', workEnd: '22:00' };
+    }
+    if (!Array.isArray(this.state.bookings)) this.state.bookings = [];
+    if (!Array.isArray(this.state.clients)) this.state.clients = [];
 
-            <!-- Step 1: Service Type -->
-            <div class="service-toggle">
-                <button class="service-btn" id="btn-massage" onclick="App.selectService('massage')">МАССАЖ</button>
-                <button class="service-btn" id="btn-laser" onclick="App.selectService('laser')">ЛАЗЕР</button>
-            </div>
+    if (!this.state.renderedDateLimit) {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + 14);
+      this.state.renderedDateLimit = d;
+    } else if (typeof this.state.renderedDateLimit === 'string') {
+      const parsed = new Date(this.state.renderedDateLimit);
+      this.state.renderedDateLimit = isNaN(parsed) ? new Date() : parsed;
+    }
+  }
 
-            <!-- Step 2: Phone (Last 4) -->
-            <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 5px;">ПОСЛЕДНИЕ 4 ЦИФРЫ</div>
-            <div class="numpad-display" id="numpad-display"></div>
-
-            <div class="numpad-grid">
-                <button class="num-btn" onclick="App.numpadPress('1')">1</button>
-                <button class="num-btn" onclick="App.numpadPress('2')">2</button>
-                <button class="num-btn" onclick="App.numpadPress('3')">3</button>
-                <button class="num-btn" onclick="App.numpadPress('4')">4</button>
-                <button class="num-btn" onclick="App.numpadPress('5')">5</button>
-                <button class="num-btn" onclick="App.numpadPress('6')">6</button>
-                <button class="num-btn" onclick="App.numpadPress('7')">7</button>
-                <button class="num-btn" onclick="App.numpadPress('8')">8</button>
-                <button class="num-btn" onclick="App.numpadPress('9')">9</button>
-                <button class="num-btn action" onclick="App.numpadClear()">C</button>
-                <button class="num-btn" onclick="App.numpadPress('0')">0</button>
-                <button class="num-btn action" onclick="App.numpadBack()">⌫</button>
-            </div>
-
-            <button class="main-action-btn" onclick="App.confirmBooking(); return false;" type="button">ЗАПИСАТЬ</button>
-        </div>
-    </div>
-
-    <!-- View/Edit Modal -->
-    <div id="view-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">Детали записи</div>
-                <div onclick="App.closeModal('view-modal')" style="padding: 10px; cursor: pointer;">✕</div>
-            </div>
-            
-            <div style="margin-bottom: 20px;">
-                <p id="view-client-phone" style="margin: 15px 0; color: var(--text-main); font-size: 1.5rem; font-weight: 600; text-align: center; font-family: 'Roboto Mono', monospace; letter-spacing: 2px; width: 100%;"></p>
-                <p id="view-service-info" style="margin: 15px 0; font-size: 1.1rem; font-weight: 600;"></p>
-            </div>
-
-            <button class="main-action-btn call-btn" id="btn-call-client" onclick="App.callClient()">ПОЗВОНИТЬ</button>
-            <button class="main-action-btn" style="background: #ef4444; margin-top: 10px;" onclick="App.deleteBooking()">УДАЛИТЬ ЗАПИСЬ</button>
-        </div>
-    </div>
-
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">Настройки</div>
-                <div onclick="App.closeModal('settings-modal')" style="padding: 10px; cursor: pointer;">✕</div>
-            </div>
-
-            <h4 style="margin-bottom: 10px;">База клиентов</h4>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5;">
-                <strong style="color: var(--accent-green);">📞 Важно:</strong> Добавьте номера телефонов клиентов, чтобы можно было звонить одной кнопкой из записи.<br>
-                Введите номера через запятую или пробел (можно в одну строку):
-            </div>
-            <div class="settings-area">
-                <textarea id="clients-input" placeholder="89001234567, 89009876543, 89005556677"></textarea>
-            </div>
-            <button class="main-action-btn" onclick="App.saveSettings()">СОХРАНИТЬ</button>
-        </div>
-    </div>
-
-    <script type="module">
-        /**
-         * Configuration: REPLACE WITH YOUR GOOGLE SCRIPT WEB APP URL
-         */
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzLjhlGThXTM6ckk6mjgbNXVOVTDwturDVTEDnpppmDULdlvdbcpYaoL6KpLiY5GlLU/exec'; 
-
-        class SalonApp {
-            constructor() {
-                this.state = {
-                    view: 'open', // 'open' or 'closed'
-                    bookings: [],
-                    clients: [], // {name, phone, rawString}
-                    settings: { workStart: '10:00', workEnd: '22:00' },
-                    renderedDateLimit: new Date(), // For infinite scroll
-                    currentBooking: null // Temp data for modal
-                };
-
-                // Queue for background sync
-                this.syncQueue = [];
-                this.isSyncing = false;
-
-                this.init();
-            }
-
-            async init() {
-                this.loadLocal();
-                this.render();
-                
-                // Ensure settings are initialized
-                if (!this.state.settings || !this.state.settings.workStart || !this.state.settings.workEnd) {
-                    this.state.settings = { workStart: '10:00', workEnd: '22:00' };
-                }
-                
-                // Ensure renderedDateLimit is always a valid Date object
-                if (!this.state.renderedDateLimit || !(this.state.renderedDateLimit instanceof Date) || isNaN(this.state.renderedDateLimit.getTime())) {
-                    const d = new Date();
-                    d.setDate(d.getDate() + 14);
-                    this.state.renderedDateLimit = d;
-                }
-
-                // Ensure bookings is an array
-                if (!Array.isArray(this.state.bookings)) {
-                    this.state.bookings = [];
-                }
-
-                // Initial render with local data
-                this.renderDays();
-                this.setupInfiniteScroll();
-
-                // Background Sync - this will re-render after data loads
-                if (API_URL !== 'YOUR_GOOGLE_SCRIPT_WEB_APP_URL_HERE') {
-                    await this.fetchData();
-                } else {
-                    console.warn("Please configure API_URL in the code.");
-                }
-            }
-
-            // --- Data Persistence ---
-            loadLocal() {
-                const s = localStorage.getItem('salon_state');
-                if (s) {
-                    const parsed = JSON.parse(s);
-                    // Convert renderedDateLimit back to Date object if it exists
-                    if (parsed.renderedDateLimit) {
-                        const dateLimit = new Date(parsed.renderedDateLimit);
-                        // Check if date is valid
-                        if (isNaN(dateLimit.getTime())) {
-                            // Invalid date, use default
-                            parsed.renderedDateLimit = null;
-                        } else {
-                            parsed.renderedDateLimit = dateLimit;
-                        }
-                    }
-                    // Merge strategies could be complex, for now simple overwrite but keep queue if any
-                    this.state = { ...this.state, ...parsed };
-                }
-            }
-
-            saveLocal() {
-                localStorage.setItem('salon_state', JSON.stringify(this.state));
-            }
-
-            async fetchData() {
-                try {
-                    const res = await fetch(`${API_URL}?action=syncAll`);
-                    const json = await res.json();
-                    if (json.success && json.data) {
-                        this.state.bookings = Array.isArray(json.data.bookings) ? json.data.bookings : [];
-                        this.state.clients = Array.isArray(json.data.clients) ? json.data.clients : [];
-                        if (json.data.settings) {
-                            this.state.settings = { 
-                                workStart: json.data.settings.workStart || '10:00',
-                                workEnd: json.data.settings.workEnd || '22:00'
-                            };
-                        }
-                        this.saveLocal();
-                        this.renderDays(); // Re-render with new data
-                        this.updateInfiniteTriggerVisibility();
-                    }
-                } catch (e) {
-                    console.error("Sync failed", e);
-                    // Even if sync fails, render with existing data
-                    this.renderDays();
-                }
-            }
-
-            queueAction(action, data) {
-                // In a real robust app, we'd persist the queue too.
-                // Here we fire and forget (optimistic), assuming success usually.
-                // For a "perfect" sync, we'd implementing a robust queue processor.
-                if (API_URL === 'YOUR_GOOGLE_SCRIPT_WEB_APP_URL_HERE') return;
-
-                const payload = { action, ...data };
-                
-                fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                })
-                .then(res => {
-                    if (!res.ok) {
-                        throw new Error(`HTTP error! status: ${res.status}`);
-                    }
-                    return res.text();
-                })
-                .then(text => {
-                    try {
-                        const json = JSON.parse(text);
-                        console.log('Synced', action, json);
-                    } catch (e) {
-                        console.log('Synced', action, text);
-                    }
-                })
-                .catch(err => {
-                    console.error('Sync error', err, 'Action:', action, 'Data:', data);
-                });
-            }
-
-            // --- UI Rendering ---
-            toggleView(view) {
-                this.state.view = view;
-                document.querySelectorAll('.toggle-btn').forEach(b => {
-                    b.classList.remove('active', 'active-closed');
-                    if (b.innerText.toLowerCase() === (view === 'open' ? 'открытые' : 'закрытые')) {
-                        b.classList.add(view === 'open' ? 'active' : 'active-closed');
-                    }
-                });
-                this.renderDays();
-                // Re-setup infinite scroll for new view
-                this.setupInfiniteScroll();
-            }
-
-            renderDays() {
-                const container = document.getElementById('main-container');
-                if (!container) return; // Container not ready yet
-                
-                container.innerHTML = '';
-                
-                // Ensure settings are valid
-                if (!this.state.settings || !this.state.settings.workStart || !this.state.settings.workEnd) {
-                    this.state.settings = { workStart: '10:00', workEnd: '22:00' };
-                }
-                
-                // Ensure bookings is an array
-                if (!Array.isArray(this.state.bookings)) {
-                    this.state.bookings = [];
-                }
-                
-                // Collect dates that have relevant slots (booked for 'closed', free for 'open')
-                const datesWithSlots = new Set();
-                const startH = parseInt(this.state.settings.workStart.split(':')[0]) || 10;
-                const endH = parseInt(this.state.settings.workEnd.split(':')[0]) || 22;
-                
-                // For 'closed' view: collect dates with bookings
-                if (this.state.view === 'closed') {
-                    this.state.bookings.forEach(b => {
-                        if (b.status === 'active') {
-                            datesWithSlots.add(b.date);
-                        }
-                    });
-                } else {
-                    // For 'open' view: collect dates that have free slots
-                    // Check all dates from TODAY (not yesterday) to renderedDateLimit
-                    const today = new Date();
-                    today.setHours(0,0,0,0);
-                    const todayKey = today.toISOString().split('T')[0];
-                    
-                    // Ensure renderedDateLimit is valid
-                    let endDate = this.state.renderedDateLimit;
-                    if (!(endDate instanceof Date) || isNaN(endDate.getTime())) {
-                        // Fallback to 14 days from now
-                        endDate = new Date();
-                        endDate.setDate(endDate.getDate() + 14);
-                        this.state.renderedDateLimit = endDate;
-                    }
-                    const end = new Date(endDate);
-                    end.setHours(23,59,59,999); // End of day
-                    
-                    // Start from today, not yesterday
-                    for (let d = new Date(today); d <= end; d.setDate(d.getDate() + 1)) {
-                        const dateKey = d.toISOString().split('T')[0];
-                        // Only check dates from today onwards
-                        if (dateKey < todayKey) continue;
-                        
-                        // Check if there are any free slots on this day
-                        // For today, only check future times
-                        const isToday = dateKey === todayKey;
-                        const now = new Date();
-                        const currentHour = now.getHours();
-                        
-                        for (let h = startH; h < endH; h++) {
-                            // Skip past times for today
-                            if (isToday && h <= currentHour) continue;
-                            
-                            const time = `${h}:00`;
-                            const booking = this.state.bookings.find(b => 
-                                b.date === dateKey && b.time === time && b.status === 'active'
-                            );
-                            if (!booking) {
-                                datesWithSlots.add(dateKey);
-                                break; // Found at least one free slot, no need to check more
-                            }
-                        }
-                    }
-                }
-                
-                // Sort dates and render only those with slots
-                const sortedDates = Array.from(datesWithSlots).sort();
-                
-                // Filter out past dates for 'open' view - start from today
-                const today = new Date();
-                today.setHours(0,0,0,0);
-                const todayKey = today.toISOString().split('T')[0];
-                
-                let filteredDates = this.state.view === 'open' 
-                    ? sortedDates.filter(dateKey => dateKey >= todayKey)
-                    : sortedDates;
-                
-                // For 'open' view, if no dates found, ensure at least tomorrow is shown
-                if (this.state.view === 'open' && filteredDates.length === 0) {
-                    const tomorrow = new Date(today);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    const tomorrowKey = tomorrow.toISOString().split('T')[0];
-                    filteredDates = [tomorrowKey];
-                }
-                
-                // Show empty message for 'closed' view if no bookings
-                if (this.state.view === 'closed' && filteredDates.length === 0) {
-                    const emptyBlock = document.createElement('div');
-                    emptyBlock.className = 'day-block';
-                    emptyBlock.style.textAlign = 'center';
-                    emptyBlock.style.padding = '60px 20px';
-                    emptyBlock.style.color = 'var(--text-muted)';
-                    emptyBlock.innerHTML = `
-                        <div style="font-size: 3rem; margin-bottom: 20px;">😔</div>
-                        <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">Ой, тут еще ничего нет</div>
-                        <div style="font-size: 0.9rem;">Добавьте запись</div>
-                    `;
-                    container.appendChild(emptyBlock);
-                } else {
-                    filteredDates.forEach(dateKey => {
-                        // Validate date before using
-                        const d = new Date(dateKey + 'T00:00:00');
-                        if (isNaN(d.getTime())) {
-                            console.warn('Invalid date:', dateKey);
-                            return;
-                        }
-                        
-                        const dayStr = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' });
-                        const isToday = dateKey === new Date().toISOString().split('T')[0];
-
-                        const dayBlock = document.createElement('div');
-                        dayBlock.className = 'day-block';
-                        
-                        dayBlock.innerHTML = `
-                            <div class="day-header">
-                                ${dayStr}
-                                ${isToday ? '<span class="today-badge">СЕГОДНЯ</span>' : ''}
-                            </div>
-                            <div class="slots-grid" id="grid-${dateKey}"></div>
-                        `;
-                        
-                        container.appendChild(dayBlock);
-                        this.renderSlotsForDay(dateKey, `grid-${dateKey}`);
-                    });
-                }
-                
-                // Update infinite trigger visibility
-                this.updateInfiniteTriggerVisibility();
-            }
-            
-            updateInfiniteTriggerVisibility() {
-                const trigger = document.getElementById('infinite-trigger');
-                if (this.state.view === 'closed') {
-                    trigger.style.display = 'none';
-                    return;
-                }
-                
-                // For 'open' view, check if we've reached the end
-                const startH = parseInt(this.state.settings.workStart.split(':')[0]);
-                const endH = parseInt(this.state.settings.workEnd.split(':')[0]);
-                let currentLimit = this.state.renderedDateLimit;
-                if (!(currentLimit instanceof Date) || isNaN(currentLimit.getTime())) {
-                    currentLimit = new Date();
-                    currentLimit.setDate(currentLimit.getDate() + 14);
-                    this.state.renderedDateLimit = currentLimit;
-                }
-                const checkLimit = new Date(currentLimit);
-                checkLimit.setDate(checkLimit.getDate() + 7); // Check next week
-                
-                let hasFreeSlots = false;
-                for (let d = new Date(currentLimit); d <= checkLimit && !hasFreeSlots; d.setDate(d.getDate() + 1)) {
-                    const dateKey = d.toISOString().split('T')[0];
-                    for (let h = startH; h < endH; h++) {
-                        const time = `${h}:00`;
-                        const booking = this.state.bookings.find(b => 
-                            b.date === dateKey && b.time === time && b.status === 'active'
-                        );
-                        if (!booking) {
-                            hasFreeSlots = true;
-                            break;
-                        }
-                    }
-                }
-                
-                trigger.style.display = hasFreeSlots ? 'flex' : 'none';
-            }
-
-            renderSlotsForDay(dateKey, containerId) {
-                const container = document.getElementById(containerId);
-                const hours = [];
-                // Generate hours based on settings (default 10-22)
-                const startH = parseInt(this.state.settings.workStart.split(':')[0]);
-                const endH = parseInt(this.state.settings.workEnd.split(':')[0]);
-                
-                // Check if this is today
-                const now = new Date();
-                const today = new Date();
-                today.setHours(0,0,0,0);
-                const todayKey = today.toISOString().split('T')[0];
-                const isToday = dateKey === todayKey;
-                const currentHour = now.getHours();
-                const currentMinute = now.getMinutes();
-                
-                for (let h = startH; h < endH; h++) {
-                    // For 'open' view on today, skip past times
-                    if (this.state.view === 'open' && isToday) {
-                        // Skip if hour has passed, or if it's current hour and minutes > 0
-                        if (h < currentHour || (h === currentHour && currentMinute > 0)) {
-                            continue;
-                        }
-                    }
-                    hours.push(`${h}:00`);
-                }
-
-                hours.forEach(time => {
-                    // Find booking
-                    const booking = this.state.bookings.find(b => 
-                        b.date === dateKey && b.time === time && b.status === 'active'
-                    );
-
-                    const isBooked = !!booking;
-                    const showSlot = (this.state.view === 'open' && !isBooked) || 
-                                     (this.state.view === 'closed' && isBooked);
-
-                    if (showSlot) {
-                        const slot = document.createElement('div');
-                        slot.className = `time-slot ${isBooked ? 'booked' : 'free'}`;
-                        if (isBooked) slot.classList.add(booking.serviceType); // massage or laser
-                        
-                        let content = '';
-                        if (!isBooked) {
-                            content = `<div class="time-text">${time}</div>`;
-                            slot.onclick = () => this.openBookingModal(dateKey, time);
-                        } else {
-                            const showClientName = booking.clientName && booking.clientName !== 'Новый';
-                            content = `
-                                <div class="service-icon">${booking.serviceType === 'massage' ? '💆‍♀️' : '⚡'}</div>
-                                <div style="font-weight:700; font-size: 1rem;">${time}</div>
-                                ${showClientName ? `<div class="client-info">${booking.clientName}</div>` : ''}
-                                <div class="client-info" style="font-family:monospace">..${booking.phone.slice(-4)}</div>
-                            `;
-                            slot.onclick = () => this.openViewModal(booking);
-                        }
-                        
-                        slot.innerHTML = content;
-                        container.appendChild(slot);
-                    }
-                });
-            }
-
-            setupInfiniteScroll() {
-                const trigger = document.getElementById('infinite-trigger');
-                
-                // Disconnect previous observer if exists
-                if (this.scrollObserver) {
-                    this.scrollObserver.disconnect();
-                }
-                
-                // For 'closed' view, no infinite scroll needed (all bookings are shown)
-                if (this.state.view === 'closed') {
-                    trigger.style.display = 'none';
-                    return;
-                }
-                
-                // Visibility will be updated by updateInfiniteTriggerVisibility
-                
-                this.scrollObserver = new IntersectionObserver((entries) => {
-                    if (entries[0].isIntersecting && this.state.view === 'open') {
-                        // Check if there are free slots in the next period before extending
-                        let currentLimit = this.state.renderedDateLimit;
-                        if (!(currentLimit instanceof Date) || isNaN(currentLimit.getTime())) {
-                            currentLimit = new Date();
-                            currentLimit.setDate(currentLimit.getDate() + 14);
-                            this.state.renderedDateLimit = currentLimit;
-                        }
-                        const newLimit = new Date(currentLimit);
-                        newLimit.setDate(newLimit.getDate() + 14);
-                        
-                        // Check if there are any free slots in the new period
-                        const startH = parseInt(this.state.settings.workStart.split(':')[0]);
-                        const endH = parseInt(this.state.settings.workEnd.split(':')[0]);
-                        let hasFreeSlots = false;
-                        
-                        for (let d = new Date(currentLimit); d <= newLimit && !hasFreeSlots; d.setDate(d.getDate() + 1)) {
-                            const dateKey = d.toISOString().split('T')[0];
-                            for (let h = startH; h < endH; h++) {
-                                const time = `${h}:00`;
-                                const booking = this.state.bookings.find(b => 
-                                    b.date === dateKey && b.time === time && b.status === 'active'
-                                );
-                                if (!booking) {
-                                    hasFreeSlots = true;
-                                    break;
-                                }
-                            }
-                        }
-                        
-                        if (hasFreeSlots) {
-                            this.state.renderedDateLimit = newLimit;
-                            this.renderDays();
-                        } else {
-                            // No more free slots, hide trigger
-                            trigger.style.display = 'none';
-                        }
-                    }
-                }, { threshold: 0.1 });
-                
-                this.scrollObserver.observe(trigger);
-            }
-
-            // --- Booking Logic ---
-            openBookingModal(date, time) {
-                this.state.currentBooking = { date, time, serviceType: null, phone: '' };
-                document.getElementById('modal-date-title').innerText = `${date.split('-').reverse().join('.')} / ${time}`;
-                document.getElementById('booking-modal').classList.add('active');
-                document.body.classList.add('modal-open');
-                this.resetModalUI();
-            }
-
-            resetModalUI() {
-                document.querySelectorAll('.service-btn').forEach(b => b.classList.remove('selected-massage', 'selected-laser'));
-                document.getElementById('numpad-display').innerText = '';
-                this.updateConfirmBtn();
-            }
-
-            selectService(type) {
-                this.state.currentBooking.serviceType = type;
-                // UI Toggle
-                document.getElementById('btn-massage').classList.toggle('selected-massage', type === 'massage');
-                document.getElementById('btn-laser').classList.toggle('selected-laser', type === 'laser');
-                if (type === 'massage') document.getElementById('btn-laser').classList.remove('selected-laser');
-                if (type === 'laser') document.getElementById('btn-massage').classList.remove('selected-massage');
-                this.updateConfirmBtn();
-            }
-
-            numpadPress(num) {
-                if (this.state.currentBooking.phone.length < 4) {
-                    this.state.currentBooking.phone += num;
-                    document.getElementById('numpad-display').innerText = this.state.currentBooking.phone;
-                    this.updateConfirmBtn();
-                }
-            }
-
-            numpadClear() {
-                this.state.currentBooking.phone = '';
-                document.getElementById('numpad-display').innerText = '';
-                this.updateConfirmBtn();
-            }
-            
-            numpadBack() {
-                this.state.currentBooking.phone = this.state.currentBooking.phone.slice(0, -1);
-                document.getElementById('numpad-display').innerText = this.state.currentBooking.phone;
-                this.updateConfirmBtn();
-            }
-
-            updateConfirmBtn() {
-                const b = this.state.currentBooking;
-                const isValid = b && b.serviceType && b.phone && b.phone.length === 4;
-                const btn = document.querySelector('#booking-modal .main-action-btn');
-                if (btn) {
-                    btn.disabled = !isValid;
-                }
-            }
-
-            confirmBooking() {
-                const b = this.state.currentBooking;
-                if (!b || !b.serviceType || !b.phone || b.phone.length !== 4) {
-                    console.log('Validation failed:', b);
-                    return;
-                }
-
-                // Find client name if possible
-                const client = this.state.clients.find(c => {
-                    const phone = String(c.phone || '');
-                    return phone && phone.endsWith(b.phone);
-                });
-                const clientName = client ? (client.name || '') : '';
-
-                const newBooking = {
-                    id: 'temp_' + Date.now(),
-                    date: b.date,
-                    time: b.time,
-                    serviceType: b.serviceType,
-                    procedure: '', // Empty procedure
-                    phone: b.phone,
-                    clientName: clientName,
-                    status: 'active',
-                    createdAt: new Date().toISOString()
-                };
-
-                // Optimistic Update
-                this.state.bookings.push(newBooking);
-                this.saveLocal();
-                this.renderDays();
-                this.updateInfiniteTriggerVisibility();
-                this.closeModal();
-
-                // Sync
-                this.queueAction('createBooking', newBooking);
-            }
-
-            // --- View/Edit Logic ---
-            openViewModal(booking) {
-                this.state.viewingBooking = booking;
-                const modal = document.getElementById('view-modal');
-                
-                // Find full phone - try multiple methods
-                let fullPhone = '';
-                const bookingPhone = String(booking.phone || '');
-                const last4 = bookingPhone.slice(-4);
-                
-                // First try: exact match by last 4 digits
-                const client = this.state.clients.find(c => {
-                    const phone = String(c.phone || '');
-                    if (!phone) return false;
-                    const clientLast4 = phone.slice(-4);
-                    return clientLast4 === last4;
-                });
-                
-                if (client) {
-                    fullPhone = String(client.phone || '');
-                } else {
-                    // If not found, try to find any client with matching last 4 digits
-                    const matchingClient = this.state.clients.find(c => {
-                        const phone = String(c.phone || '');
-                        return phone && phone.endsWith(last4);
-                    });
-                    if (matchingClient) {
-                        fullPhone = String(matchingClient.phone || '');
-                    } else {
-                        // Last resort: show what we have (shouldn't happen if booking was created properly)
-                        fullPhone = bookingPhone.length > 4 ? bookingPhone : `...${last4}`;
-                    }
-                }
-                
-                document.getElementById('view-client-phone').innerText = fullPhone;
-                document.getElementById('view-service-info').innerText = booking.serviceType === 'massage' ? 'Массаж' : 'Лазер';
-                
-                document.getElementById('btn-call-client').onclick = () => {
-                    if (fullPhone.length > 4 && !fullPhone.startsWith('...')) {
-                        window.open(`tel:${fullPhone}`);
-                    }
-                };
-                
-                modal.classList.add('active');
-                document.body.classList.add('modal-open');
-            }
-            
-            deleteBooking() {
-                const id = this.state.viewingBooking.id;
-                this.state.bookings = this.state.bookings.filter(b => b.id !== id);
-                this.saveLocal();
-                this.renderDays();
-                this.updateInfiniteTriggerVisibility();
-                this.closeModal('view-modal');
-                this.queueAction('deleteBooking', { id });
-            }
-
-            // --- Settings Logic ---
-            openSettings() {
-                document.getElementById('settings-modal').classList.add('active');
-                document.body.classList.add('modal-open');
-                // Fill textarea with phone numbers separated by comma
-                const phones = this.state.clients.map(c => c.phone).filter(Boolean);
-                document.getElementById('clients-input').value = phones.join(', ');
-            }
-            
-            saveSettings() {
-                const text = document.getElementById('clients-input').value;
-                const newClients = [];
-                
-                // Split by comma or space, then extract phone numbers
-                const parts = text.split(/[,\s]+/).map(p => p.trim()).filter(Boolean);
-                
-                parts.forEach(part => {
-                    // Extract phone number (sequence of digits, at least 10 digits)
-                    const phoneMatch = part.match(/(\d{10,})/);
-                    if (phoneMatch) {
-                        const phone = phoneMatch[1];
-                        newClients.push({ 
-                            name: '', 
-                            phone: phone, 
-                            rawString: phone 
-                        });
-                    }
-                });
-                
-                this.state.clients = newClients;
-                this.saveLocal();
-                this.closeModal('settings-modal');
-                
-                this.queueAction('updateClients', { clients: newClients });
-            }
-
-            // --- Common ---
-            closeModal(id = 'booking-modal') {
-                document.getElementById(id).classList.remove('active');
-                document.body.classList.remove('modal-open');
-            }
-            
-            render() { /* placeholder */ }
-            
-            callClient() { /* handled in openViewModal */ }
+  loadLocal() {
+    try {
+      const s = localStorage.getItem('salon_state');
+      if (s) {
+        const parsed = JSON.parse(s);
+        // Восстанавливаем Date
+        if (parsed.renderedDateLimit) {
+          parsed.renderedDateLimit = new Date(parsed.renderedDateLimit);
         }
+        Object.assign(this.state, parsed);
+      }
+    } catch (e) {
+      console.error('Failed to load local state:', e);
+    }
+  }
 
-        // Initialize when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                window.App = new SalonApp();
-            });
+  saveLocal() {
+    try {
+      const stateToSave = { ...this.state };
+      if (stateToSave.renderedDateLimit instanceof Date) {
+        stateToSave.renderedDateLimit = stateToSave.renderedDateLimit.toISOString();
+      }
+      localStorage.setItem('salon_state', JSON.stringify(stateToSave));
+    } catch (e) {
+      console.error('Failed to save local state:', e);
+    }
+  }
+
+  async fetchData() {
+    if (!API_URL || API_URL.includes('YOUR_GOOGLE_SCRIPT')) return;
+
+    try {
+      const res = await fetch(`${API_URL}?action=syncAll`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const json = await res.json();
+      if (!json.success) throw new Error('Server sync failed');
+
+      const data = json.data || {};
+      this.state.bookings = Array.isArray(data.bookings) ? data.bookings : [];
+      this.state.clients = Array.isArray(data.clients) ? data.clients : [];
+
+      if (data.settings) {
+        this.state.settings.workStart = data.settings.workStart || '10:00';
+        this.state.settings.workEnd = data.settings.workEnd || '22:00';
+      }
+
+      this.saveLocal();
+    } catch (e) {
+      console.error('Fetch data error:', e);
+      throw e;
+    }
+  }
+
+  async queueAction(action, data) {
+    if (!API_URL || API_URL.includes('YOUR_GOOGLE_SCRIPT')) {
+      console.warn('API_URL not configured — skipping sync');
+      return { success: true, data: data, id: 'temp_' + Date.now() };
+    }
+
+    const payload = { action, ...data };
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (e) {
+        result = { success: true, raw: text };
+      }
+
+      if (!result.success) {
+        throw new Error('Sync action failed: ' + JSON.stringify(result));
+      }
+
+      // 🔑 Ключевое исправление: если действие — создание, и сервер вернул id — заменяем temp → real
+      if (action === 'createBooking' && result.id && data.tempId) {
+        const booking = this.state.bookings.find(b => b.id === data.tempId);
+        if (booking) {
+          booking.id = result.id;
+        }
+      }
+
+      return result;
+    } catch (err) {
+      console.error('Sync error:', err, action, data);
+      throw err;
+    }
+  }
+
+  updateToggleButtons() {
+    const btns = document.querySelectorAll('.toggle-btn');
+    btns.forEach(b => {
+      b.classList.remove('active', 'active-closed');
+    });
+    if (this.state.view === 'open') {
+      btns[0]?.classList.add('active');
+    } else {
+      btns[1]?.classList.add('active-closed');
+    }
+  }
+
+  toggleView(view) {
+    this.state.view = view;
+    this.updateToggleButtons();
+    this.renderUI();
+  }
+
+  renderUI() {
+    this.renderDays();
+    this.updateInfiniteTriggerVisibility();
+  }
+
+  renderDays() {
+    const container = document.getElementById('main-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+    this.ensureDefaults();
+
+    const { workStart, workEnd } = this.state.settings;
+    const startH = parseInt(workStart.split(':')[0]) || 10;
+    const endH = parseInt(workEnd.split(':')[0]) || 22;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayKey = today.toISOString().split('T')[0];
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    const datesWithSlots = new Set();
+
+    if (this.state.view === 'closed') {
+      this.state.bookings
+        .filter(b => b.status === 'active')
+        .forEach(b => b.date && datesWithSlots.add(b.date));
+    } else {
+      // Открытые: показываем дни с *хотя бы одним свободным слотом*
+      const endDate = new Date(this.state.renderedDateLimit);
+      for (let d = new Date(today); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const dateKey = d.toISOString().split('T')[0];
+        const isToday = dateKey === todayKey;
+
+        let hasFreeSlot = false;
+        for (let h = startH; h < endH; h++) {
+          if (isToday && (h < currentHour || (h === currentHour && currentMinute > 0))) continue;
+          const time = `${h}:00`;
+          const booking = this.state.bookings.find(b =>
+            b.date === dateKey && b.time === time && b.status === 'active'
+          );
+          if (!booking) {
+            hasFreeSlot = true;
+            break;
+          }
+        }
+        if (hasFreeSlot) {
+          datesWithSlots.add(dateKey);
+        }
+      }
+    }
+
+    const sortedDates = Array.from(datesWithSlots)
+      .filter(d => !isNaN(new Date(d).getTime()))
+      .sort();
+
+    if (sortedDates.length === 0) {
+      const emptyBlock = document.createElement('div');
+      emptyBlock.className = 'day-block';
+      emptyBlock.style.cssText = 'text-align: center; padding: 60px 20px; color: var(--text-muted);';
+      emptyBlock.innerHTML = `
+        <div style="font-size: 3rem; margin-bottom: 20px;">${this.state.view === 'closed' ? '📁' : '📅'}</div>
+        <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">
+          ${this.state.view === 'closed' ? 'Закрытых записей нет' : 'Нет свободных слотов'}
+        </div>
+        <div style="font-size: 0.9rem;">
+          ${this.state.view === 'closed' ? 'Создайте первую запись' : 'Попробуйте позже или измените настройки'}
+        </div>
+      `;
+      container.appendChild(emptyBlock);
+    } else {
+      sortedDates.forEach(dateKey => {
+        const d = new Date(dateKey + 'T00:00:00');
+        if (isNaN(d.getTime())) return;
+
+        const dayStr = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' });
+        const isToday = dateKey === todayKey;
+
+        const dayBlock = document.createElement('div');
+        dayBlock.className = 'day-block';
+        dayBlock.innerHTML = `
+          <div class="day-header">
+            ${dayStr}
+            ${isToday ? '<span class="today-badge">СЕГОДНЯ</span>' : ''}
+          </div>
+          <div class="slots-grid" id="grid-${dateKey}"></div>
+        `;
+        container.appendChild(dayBlock);
+        this.renderSlotsForDay(dateKey);
+      });
+    }
+
+    // Первый рендер прошёл — можно показывать интерфейс
+    if (this.isFirstRender) {
+      this.isFirstRender = false;
+      document.getElementById('infinite-trigger').style.display = 'flex';
+    }
+  }
+
+  renderSlotsForDay(dateKey) {
+    const container = document.getElementById(`grid-${dateKey}`);
+    if (!container) return;
+
+    const { workStart, workEnd } = this.state.settings;
+    const startH = parseInt(workStart.split(':')[0]) || 10;
+    const endH = parseInt(workEnd.split(':')[0]) || 22;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayKey = today.toISOString().split('T')[0];
+    const isToday = dateKey === todayKey;
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    for (let h = startH; h < endH; h++) {
+      const time = `${h}:00`;
+
+      if (this.state.view === 'open' && isToday &&
+        (h < currentHour || (h === currentHour && currentMinute > 0))) {
+        continue;
+      }
+
+      const booking = this.state.bookings.find(b =>
+        b.date === dateKey && b.time === time && b.status === 'active'
+      );
+      const isBooked = !!booking;
+      const showSlot = (this.state.view === 'open' && !isBooked) ||
+                       (this.state.view === 'closed' && isBooked);
+
+      if (showSlot) {
+        const slot = document.createElement('div');
+        slot.className = `time-slot ${isBooked ? 'booked' : 'free'}`;
+        if (isBooked) {
+          slot.classList.add(booking.serviceType || 'unknown');
+          const showClientName = booking.clientName && booking.clientName !== 'Новый';
+          slot.innerHTML = `
+            <div class="service-icon">${booking.serviceType === 'massage' ? '💆‍♀️' : '⚡'}</div>
+            <div style="font-weight:700; font-size: 1rem;">${time}</div>
+            ${showClientName ? `<div class="client-info">${booking.clientName}</div>` : ''}
+            <div class="client-info" style="font-family:monospace">..${(booking.phone || '').slice(-4)}</div>
+          `;
+          slot.onclick = () => this.openViewModal(booking);
         } else {
-            window.App = new SalonApp();
+          slot.innerHTML = `<div class="time-text">${time}</div>`;
+          slot.onclick = () => this.openBookingModal(dateKey, time);
         }
-    </script>
+        container.appendChild(slot);
+      }
+    }
+  }
+
+  setupInfiniteScroll() {
+    const trigger = document.getElementById('infinite-trigger');
+    if (!trigger) return;
+
+    if (this.scrollObserver) {
+      this.scrollObserver.disconnect();
+    }
+
+    if (this.state.view === 'closed') {
+      trigger.style.display = 'none';
+      return;
+    }
+
+    this.scrollObserver = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && this.state.view === 'open') {
+        this.loadMoreDays();
+      }
+    }, { threshold: 0.1 });
+
+    this.scrollObserver.observe(trigger);
+  }
+
+  loadMoreDays() {
+    const currentLimit = new Date(this.state.renderedDateLimit);
+    const newLimit = new Date(currentLimit);
+    newLimit.setDate(newLimit.getDate() + 14);
+    this.state.renderedDateLimit = newLimit;
+    this.saveLocal();
+    this.renderUI();
+  }
+
+  updateInfiniteTriggerVisibility() {
+    const trigger = document.getElementById('infinite-trigger');
+    if (!trigger) return;
+    trigger.style.display = this.state.view === 'closed' ? 'none' : 'flex';
+  }
+
+  // ——— Модальные окна ———
+
+  openBookingModal(date, time) {
+    this.state.currentBooking = {
+      date,
+      time,
+      serviceType: null,
+      phone: '',
+      tempId: 'temp_' + Date.now(),
+    };
+    const d = new Date(date + 'T00:00:00');
+    const dateStr = d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    document.getElementById('modal-date-title').innerText = `${dateStr} / ${time}`;
+    document.getElementById('booking-modal').classList.add('active');
+    document.body.classList.add('modal-open');
+    this.resetModalUI();
+  }
+
+  resetModalUI() {
+    document.querySelectorAll('.service-btn').forEach(b => {
+      b.classList.remove('selected-massage', 'selected-laser');
+    });
+    document.getElementById('numpad-display').innerText = '';
+    this.updateConfirmBtn();
+  }
+
+  selectService(type) {
+    if (this.state.currentBooking) {
+      this.state.currentBooking.serviceType = type;
+    }
+    const btn1 = document.getElementById('btn-massage');
+    const btn2 = document.getElementById('btn-laser');
+    btn1?.classList.toggle('selected-massage', type === 'massage');
+    btn2?.classList.toggle('selected-laser', type === 'laser');
+    this.updateConfirmBtn();
+  }
+
+  numpadPress(num) {
+    if (!this.state.currentBooking) return;
+    if (this.state.currentBooking.phone.length < 4) {
+      this.state.currentBooking.phone += num;
+      document.getElementById('numpad-display').innerText = this.state.currentBooking.phone;
+      this.updateConfirmBtn();
+    }
+  }
+
+  numpadClear() {
+    if (this.state.currentBooking) {
+      this.state.currentBooking.phone = '';
+      document.getElementById('numpad-display').innerText = '';
+      this.updateConfirmBtn();
+    }
+  }
+
+  numpadBack() {
+    if (this.state.currentBooking) {
+      this.state.currentBooking.phone = this.state.currentBooking.phone.slice(0, -1);
+      document.getElementById('numpad-display').innerText = this.state.currentBooking.phone;
+      this.updateConfirmBtn();
+    }
+  }
+
+  updateConfirmBtn() {
+    const b = this.state.currentBooking;
+    const isValid = b && b.serviceType && b.phone?.length === 4;
+    const btn = document.querySelector('#booking-modal .main-action-btn');
+    if (btn) {
+      btn.disabled = !isValid;
+    }
+  }
+
+  async confirmBooking() {
+    const b = this.state.currentBooking;
+    if (!b || !b.serviceType || !b.phone || b.phone.length !== 4) return;
+
+    const client = this.state.clients.find(c => {
+      const phone = String(c.phone || '');
+      return phone.endsWith(b.phone);
+    });
+
+    const newBooking = {
+      id: b.tempId,
+      date: b.date,
+      time: b.time,
+      serviceType: b.serviceType,
+      phone: b.phone,
+      clientName: client?.name || '',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    };
+
+    this.state.bookings.push(newBooking);
+    this.saveLocal();
+
+    this.closeModal();
+    this.renderUI();
+
+    try {
+      const result = await this.queueAction('createBooking', {
+        date: b.date,
+        time: b.time,
+        serviceType: b.serviceType,
+        phone: b.phone,
+        clientName: newBooking.clientName,
+        tempId: b.tempId,
+      });
+
+      // 🔁 Если сервер вернул id — обновляем локальную запись
+      if (result.id && result.id !== b.tempId) {
+        const idx = this.state.bookings.findIndex(x => x.id === b.tempId);
+        if (idx !== -1) {
+          this.state.bookings[idx].id = result.id;
+          this.saveLocal();
+        }
+      }
+    } catch (e) {
+      console.error('Failed to sync new booking — keeping local copy.', e);
+      // Оставляем в UI — пользователь видит запись, даже если сервер недоступен
+    }
+  }
+
+  openViewModal(booking) {
+    this.state.viewingBooking = booking;
+    const modal = document.getElementById('view-modal');
+
+    let fullPhone = `...${booking.phone?.slice(-4) || '????'}`;
+    const client = this.state.clients.find(c => String(c.phone || '').endsWith(booking.phone?.slice(-4)));
+    if (client && client.phone) {
+      fullPhone = String(client.phone);
+    }
+
+    document.getElementById('view-client-phone').innerText = fullPhone;
+    document.getElementById('view-service-info').innerText = 
+      booking.serviceType === 'massage' ? '💆‍♀️ Массаж' : 
+      booking.serviceType === 'laser' ? '⚡ Лазер' : '❓ Неизвестно';
+
+    const callBtn = document.getElementById('btn-call-client');
+    callBtn.onclick = () => {
+      if (fullPhone && !fullPhone.startsWith('...')) {
+        window.location.href = `tel:${fullPhone}`;
+      }
+    };
+
+    modal.classList.add('active');
+    document.body.classList.add('modal-open');
+  }
+
+  async deleteBooking() {
+    const id = this.state.viewingBooking?.id;
+    if (!id) return;
+
+    this.state.bookings = this.state.bookings.filter(b => b.id !== id);
+    this.saveLocal();
+
+    this.closeModal('view-modal');
+    this.renderUI();
+
+    try {
+      await this.queueAction('deleteBooking', { id });
+    } catch (e) {
+      console.error('Delete sync failed — local state kept.', e);
+    }
+  }
+
+  openSettings() {
+    const phones = this.state.clients.map(c => c.phone).filter(Boolean);
+    document.getElementById('clients-input').value = phones.join(', ');
+    document.getElementById('settings-modal').classList.add('active');
+    document.body.classList.add('modal-open');
+  }
+
+  async saveSettings() {
+    const text = document.getElementById('clients-input').value;
+    const newClients = [];
+    const parts = text.split(/[,\s]+/).map(p => p.trim()).filter(Boolean);
+
+    for (const part of parts) {
+      const digits = part.replace(/\D/g, '');
+      if (digits && digits.length >= 10) {
+        newClients.push({ name: '', phone: digits, rawString: part });
+      }
+    }
+
+    this.state.clients = newClients;
+    this.saveLocal();
+    this.closeModal('settings-modal');
+
+    try {
+      await this.queueAction('updateClients', { clients: newClients });
+    } catch (e) {
+      console.error('Failed to update clients on server.', e);
+    }
+  }
+
+  closeModal(id = 'booking-modal') {
+    document.getElementById(id)?.classList.remove('active');
+    document.body.classList.remove('modal-open');
+  }
+}
+
+// Инициализация
+const app = new SalonApp();
+window.App = app;
+document.addEventListener('DOMContentLoaded', () => app.init());
+</script>
 </body>
 </html>
-
