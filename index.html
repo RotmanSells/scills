@@ -509,6 +509,11 @@
                 this.loadLocal();
                 this.render();
                 
+                // Ensure settings are initialized
+                if (!this.state.settings || !this.state.settings.workStart || !this.state.settings.workEnd) {
+                    this.state.settings = { workStart: '10:00', workEnd: '22:00' };
+                }
+                
                 // Ensure renderedDateLimit is always a valid Date object
                 if (!this.state.renderedDateLimit || !(this.state.renderedDateLimit instanceof Date) || isNaN(this.state.renderedDateLimit.getTime())) {
                     const d = new Date();
@@ -516,12 +521,17 @@
                     this.state.renderedDateLimit = d;
                 }
 
+                // Ensure bookings is an array
+                if (!Array.isArray(this.state.bookings)) {
+                    this.state.bookings = [];
+                }
+
                 this.renderDays();
                 this.setupInfiniteScroll();
 
                 // Background Sync
                 if (API_URL !== 'YOUR_GOOGLE_SCRIPT_WEB_APP_URL_HERE') {
-                    this.fetchData();
+                    await this.fetchData();
                 } else {
                     console.warn("Please configure API_URL in the code.");
                 }
@@ -556,17 +566,23 @@
                 try {
                     const res = await fetch(`${API_URL}?action=syncAll`);
                     const json = await res.json();
-                    if (json.success) {
-                        this.state.bookings = json.data.bookings;
-                        // this.state.procedures = json.data.procedures; // Uncomment if backend manages procedures fully
-                        this.state.clients = json.data.clients;
-                        this.state.settings = json.data.settings;
+                    if (json.success && json.data) {
+                        this.state.bookings = Array.isArray(json.data.bookings) ? json.data.bookings : [];
+                        this.state.clients = Array.isArray(json.data.clients) ? json.data.clients : [];
+                        if (json.data.settings) {
+                            this.state.settings = { 
+                                workStart: json.data.settings.workStart || '10:00',
+                                workEnd: json.data.settings.workEnd || '22:00'
+                            };
+                        }
                         this.saveLocal();
                         this.renderDays(); // Re-render with new data
                         this.updateInfiniteTriggerVisibility();
                     }
                 } catch (e) {
                     console.error("Sync failed", e);
+                    // Even if sync fails, render with existing data
+                    this.renderDays();
                 }
             }
 
@@ -600,12 +616,24 @@
 
             renderDays() {
                 const container = document.getElementById('main-container');
+                if (!container) return; // Container not ready yet
+                
                 container.innerHTML = '';
+                
+                // Ensure settings are valid
+                if (!this.state.settings || !this.state.settings.workStart || !this.state.settings.workEnd) {
+                    this.state.settings = { workStart: '10:00', workEnd: '22:00' };
+                }
+                
+                // Ensure bookings is an array
+                if (!Array.isArray(this.state.bookings)) {
+                    this.state.bookings = [];
+                }
                 
                 // Collect dates that have relevant slots (booked for 'closed', free for 'open')
                 const datesWithSlots = new Set();
-                const startH = parseInt(this.state.settings.workStart.split(':')[0]);
-                const endH = parseInt(this.state.settings.workEnd.split(':')[0]);
+                const startH = parseInt(this.state.settings.workStart.split(':')[0]) || 10;
+                const endH = parseInt(this.state.settings.workEnd.split(':')[0]) || 22;
                 
                 // For 'closed' view: collect dates with bookings
                 if (this.state.view === 'closed') {
@@ -1043,8 +1071,14 @@
             callClient() { /* handled in openViewModal */ }
         }
 
-        // Initialize
-        window.App = new SalonApp();
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                window.App = new SalonApp();
+            });
+        } else {
+            window.App = new SalonApp();
+        }
     </script>
 </body>
 </html>
