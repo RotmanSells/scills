@@ -659,25 +659,46 @@
                     ? sortedDates.filter(dateKey => dateKey >= todayKey)
                     : sortedDates;
                 
-                filteredDates.forEach(dateKey => {
-                    const d = new Date(dateKey + 'T00:00:00');
-                    const dayStr = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' });
-                    const isToday = dateKey === new Date().toISOString().split('T')[0];
-
-                    const dayBlock = document.createElement('div');
-                    dayBlock.className = 'day-block';
-                    
-                    dayBlock.innerHTML = `
-                        <div class="day-header">
-                            ${dayStr}
-                            ${isToday ? '<span class="today-badge">СЕГОДНЯ</span>' : ''}
-                        </div>
-                        <div class="slots-grid" id="grid-${dateKey}"></div>
+                // Show empty message for 'closed' view if no bookings
+                if (this.state.view === 'closed' && filteredDates.length === 0) {
+                    const emptyBlock = document.createElement('div');
+                    emptyBlock.className = 'day-block';
+                    emptyBlock.style.textAlign = 'center';
+                    emptyBlock.style.padding = '60px 20px';
+                    emptyBlock.style.color = 'var(--text-muted)';
+                    emptyBlock.innerHTML = `
+                        <div style="font-size: 3rem; margin-bottom: 20px;">😔</div>
+                        <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 10px;">Ой, тут еще ничего нет</div>
+                        <div style="font-size: 0.9rem;">Добавьте запись</div>
                     `;
-                    
-                    container.appendChild(dayBlock);
-                    this.renderSlotsForDay(dateKey, `grid-${dateKey}`);
-                });
+                    container.appendChild(emptyBlock);
+                } else {
+                    filteredDates.forEach(dateKey => {
+                        // Validate date before using
+                        const d = new Date(dateKey + 'T00:00:00');
+                        if (isNaN(d.getTime())) {
+                            console.warn('Invalid date:', dateKey);
+                            return;
+                        }
+                        
+                        const dayStr = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' });
+                        const isToday = dateKey === new Date().toISOString().split('T')[0];
+
+                        const dayBlock = document.createElement('div');
+                        dayBlock.className = 'day-block';
+                        
+                        dayBlock.innerHTML = `
+                            <div class="day-header">
+                                ${dayStr}
+                                ${isToday ? '<span class="today-badge">СЕГОДНЯ</span>' : ''}
+                            </div>
+                            <div class="slots-grid" id="grid-${dateKey}"></div>
+                        `;
+                        
+                        container.appendChild(dayBlock);
+                        this.renderSlotsForDay(dateKey, `grid-${dateKey}`);
+                    });
+                }
                 
                 // Update infinite trigger visibility
                 this.updateInfiniteTriggerVisibility();
